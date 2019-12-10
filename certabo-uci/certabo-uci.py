@@ -231,9 +231,11 @@ def main():
                                     if move:
                                         waiting_for_user_move = False
                                         do_user_move = True
+                                        output(f'bestmove {move}')
                            else:
                                 if DEBUG:
                                     logging.info("Place pieces on their places")
+                                    output(f'info string place pieces on their places')
 
 
 if __name__ == '__main__':
