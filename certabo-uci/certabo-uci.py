@@ -91,8 +91,8 @@ def main():
     board_state = chessboard.fen()
     move = []
     starting_position = chess.STARTING_FEN
-    waiting_for_user_move = False
     rotate180 = False
+    mystate = "init"
 
     sock = socket(AF_INET, SOCK_DGRAM)
     sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -166,24 +166,28 @@ def main():
 
                 elif smove.startswith('position fen'):
                     _, _, fen = smove.split(' ', 2)
-                    logging.debug("fen: ", fen)
+                    logging.debug(f'fen: {fen}')
 
                 elif smove.startswith('position startpos'):
                     parameters = smove.split(' ')
                     logging.debug(f'startpos received {parameters}')
 
-                    chessboard.reset()
-                    if parameters[2] == 'moves':
-                        for move in parameters[3:]:
-                            logging.debug(f'move: {move}')
-                            chessboard.push_uci(move)
-                    board_state = chessboard.fen()
-                    logging.debug(f'board state: {board_state}')
-
+                    #logging.info(f'{len(parameters)}')
+                    if len(parameters)>2:
+                        if parameters[2] == 'moves':
+                            tmp_chessboard = chess.Board()
+                            for move in parameters[3:]:
+                                logging.debug(f'move: {move}')
+                                tmp_chessboard.push_uci(move)
+                            board_state = tmp_chessboard.fen()
+                            logging.debug(f'startpos board state: {board_state}')
+                            new_move = codes.get_moves(chessboard, board_state)
+                            logging.info(f'bot opponent played: {new_move}')
+                            chessboard = tmp_chessboard
+                            mystate = "user_shall_place_oppt_move"
 
                 elif smove.startswith('go'):
                     logging.debug("go...")
-                    waiting_for_user_move = True
                     # output('resign')
                     possible_moves = list(chessboard.legal_moves)
                     logging.debug(f'legal moves: {possible_moves}')
@@ -198,8 +202,6 @@ def main():
         
         if new_usb_data:
             new_usb_data = False
-            if DEBUG:
-                logging.info("Virtual board: %s", chessboard.fen())
 
             if usb_data_history_i >= usb_data_history_depth:
                 usb_data_history_filled = True
@@ -219,23 +221,49 @@ def main():
                         s1 = chessboard.board_fen()
                         s2 = board_state_usb.split(" ")[0]
                         if s1 != s2:
-                           if waiting_for_user_move:
+                            if mystate == "user_shall_place_oppt_move":
                                 try:
                                     move_detect_tries += 1
                                     move = codes.get_moves(chessboard, board_state_usb)
                                 except codes.InvalidMove:
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
-                                else:
-                                    move_detect_tries = 0
-                                    if move:
-                                        waiting_for_user_move = False
-                                        do_user_move = True
-                                        output(f'bestmove {move}')
-                           else:
+                                    else:
+                                        move_detect_tries = 0
+                                if move:
+                                    logging.info(f'moves difference: {move}')
+                                    logging.info("move for opponent")
+                                    output(f'info string move for opponent')
+                            elif mystate == "user_shall_place_his_move":
+                                try:
+                                    move_detect_tries += 1
+                                    move = codes.get_moves(chessboard, board_state_usb)
+                                    logging.debug(f'moves difference: {move}')
+                                    logging.debug(f'move count: {len(move)}')
+                                    if len(move) == 1:
+                                        # single move
+                                        bestmove = move[0]
+                                        logging.info("user moves")
+                                        chessboard.push_uci(bestmove)
+                                        output(f'bestmove {bestmove}')
+                                        mystate = "init"
+                                except codes.InvalidMove:
+                                    if move_detect_tries > move_detect_max_tries:
+                                        logging.info("Invalid move")
+                                    else:
+                                        move_detect_tries = 0
+
+
+                            else:
                                 if DEBUG:
                                     logging.info("Place pieces on their places")
                                     output(f'info string place pieces on their places')
+                                    logging.info("Virtual board: %s", chessboard.fen())
+                        else: # board is the same
+                            if mystate == "user_shall_place_oppt_move":
+                                logging.info("user has moved opponent, now it's his own turn")
+                                mystate = "user_shall_place_his_move" 
+
 
 
 if __name__ == '__main__':
