@@ -73,6 +73,8 @@ usb_proc = subprocess.Popen(usb_command)
 if not DEBUG_FAST:
     tt.sleep(1)  # time to make stable COMx connection
 
+
+
 # Disable buffering
 class Unbuffered(object):
     def __init__(self, stream):
@@ -87,13 +89,6 @@ class Unbuffered(object):
         return getattr(self.stream, attr)
 
 def main():
-    chessboard = chess.Board()
-    board_state = chessboard.fen()
-    move = []
-    starting_position = chess.STARTING_FEN
-    rotate180 = False
-    mystate = "init"
-
     sock = socket(AF_INET, SOCK_DGRAM)
     sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     sock.bind(LISTEN_SOCKET)
@@ -101,6 +96,18 @@ def main():
     recv_list = [sock]
     new_usb_data = False
     usb_data_exist = False
+
+    def send_leds(message=b'\x00' * 8):
+        sock.sendto(message, SEND_SOCKET)
+
+    send_leds(b'\xff' * 8)
+    chessboard = chess.Board()
+    board_state = chessboard.fen()
+    move = []
+    starting_position = chess.STARTING_FEN
+    rotate180 = False
+    mystate = "init"
+
 
     codes.load_calibration(port)
     calibration = False
@@ -125,6 +132,8 @@ def main():
         # print('\n', file=out)
         sys.stdout.flush()
         # logging.debug(line)
+
+    send_leds()
 
     stack = []
     while True:
@@ -222,6 +231,8 @@ def main():
                         s2 = board_state_usb.split(" ")[0]
                         if s1 != s2:
                             if mystate == "user_shall_place_oppt_move":
+
+
                                 try:
                                     move_detect_tries += 1
                                     move = codes.get_moves(chessboard, board_state_usb)
@@ -231,6 +242,22 @@ def main():
                                     else:
                                         move_detect_tries = 0
                                 if move:
+                                   # highlight right LED
+                                    i, value, i_source, value_source = codes.move2led(
+                                        move, rotate180
+                                    )  # error here if checkmate before
+                                    message = bytearray()
+                                    for j in range(8):
+                                        if j != i and j != i_source:
+                                            message.append(0)
+                                        elif j == i and j == i_source:
+                                            message.append(value + value_source)
+                                        elif j == i:
+                                            message.append(value)
+                                        else:
+                                            message.append(value_source)
+
+                                    send_leds(message)
                                     logging.info(f'moves difference: {move}')
                                     logging.info("move for opponent")
                                     output(f'info string move for opponent')
@@ -263,6 +290,7 @@ def main():
                             if mystate == "user_shall_place_oppt_move":
                                 logging.info("user has moved opponent, now it's his own turn")
                                 mystate = "user_shall_place_his_move" 
+                            send_leds()
 
 
 
