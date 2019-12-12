@@ -15,6 +15,8 @@ import os
 import argparse
 import subprocess
 import time as tt
+import threading
+import queue
 
 from socket import *
 from select import *
@@ -73,7 +75,27 @@ usb_proc = subprocess.Popen(usb_command)
 if not DEBUG_FAST:
     tt.sleep(1)  # time to make stable COMx connection
 
+stack = queue.Queue()
 
+interrupted = threading.Lock()
+interrupted.acquire()
+
+class ucireader(threading.Thread):
+    def __init__ (self, device='sys.stdin'):
+        threading.Thread.__init__(self)
+        self.device = device
+
+    def run(self):
+        while not interrupted.acquire(blocking=False):
+            try:
+                line = input()
+                stack.put(line)
+            except EOFError:
+                # we quit
+                pass
+
+inputthread = ucireader('sys.stdin')
+inputthread.start()
 
 # Disable buffering
 class Unbuffered(object):
@@ -135,7 +157,6 @@ def main():
 
     send_leds()
 
-    stack = []
     while True:
         smove = ""
         recv_ready, wtp, xtp = select(recv_list, [], [], 0.002)
@@ -151,63 +172,60 @@ def main():
             except:
                 logging.info("No new data from usb, perhaps chess board not connected")
 
-        if stack:
-            smove = stack.pop()
-        else:
-            if select([sys.stdin,],[],[],0.0)[0]:
-                smove = input()
-                logging.debug(f'>>> {smove} ')
+        if not stack.empty():
+            smove = stack.get()
+            logging.debug(f'>>> {smove} ')
 
-                if smove == 'quit':
-                    break
+            if smove == 'quit':
+                break
 
-                elif smove == 'uci':
-                    output('id name CERTABO physical board')
-                    output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
-                    output('uciok')
+            elif smove == 'uci':
+                output('id name CERTABO physical board')
+                output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
+                output('uciok')
 
-                elif smove == 'isready':
-                    output('readyok')
+            elif smove == 'isready':
+                output('readyok')
 
-                elif smove == 'ucinewgame':
-                    logging.debug("new game")
-                    # stack.append('position fen ...')
+            elif smove == 'ucinewgame':
+                logging.debug("new game")
+                # stack.append('position fen ...')
 
-                elif smove.startswith('position fen'):
-                    _, _, fen = smove.split(' ', 2)
-                    logging.debug(f'fen: {fen}')
+            elif smove.startswith('position fen'):
+                _, _, fen = smove.split(' ', 2)
+                logging.debug(f'fen: {fen}')
 
-                elif smove.startswith('position startpos'):
-                    parameters = smove.split(' ')
-                    logging.debug(f'startpos received {parameters}')
+            elif smove.startswith('position startpos'):
+                parameters = smove.split(' ')
+                logging.debug(f'startpos received {parameters}')
 
-                    #logging.info(f'{len(parameters)}')
-                    if len(parameters)>2:
-                        if parameters[2] == 'moves':
-                            tmp_chessboard = chess.Board()
-                            for move in parameters[3:]:
-                                logging.debug(f'move: {move}')
-                                tmp_chessboard.push_uci(move)
-                            board_state = tmp_chessboard.fen()
-                            logging.debug(f'startpos board state: {board_state}')
-                            new_move = codes.get_moves(chessboard, board_state)
-                            logging.info(f'bot opponent played: {new_move}')
-                            chessboard = tmp_chessboard
-                            mystate = "user_shall_place_oppt_move"
+                #logging.info(f'{len(parameters)}')
+                if len(parameters)>2:
+                    if parameters[2] == 'moves':
+                        tmp_chessboard = chess.Board()
+                        for move in parameters[3:]:
+                            logging.debug(f'move: {move}')
+                            tmp_chessboard.push_uci(move)
+                        board_state = tmp_chessboard.fen()
+                        logging.debug(f'startpos board state: {board_state}')
+                        new_move = codes.get_moves(chessboard, board_state)
+                        logging.info(f'bot opponent played: {new_move}')
+                        chessboard = tmp_chessboard
+                        mystate = "user_shall_place_oppt_move"
 
-                elif smove.startswith('go'):
-                    logging.debug("go...")
-                    # output('resign')
-                    possible_moves = list(chessboard.legal_moves)
-                    logging.debug(f'legal moves: {possible_moves}')
-                    #logging.debug(f'legal move: {possible_moves[0]}')
-                    #output('currmove e7e5')
-                    #shuffle(possible_moves)
-                    #output(f'bestmove {possible_moves[0]}')
+            elif smove.startswith('go'):
+                logging.debug("go...")
+                # output('resign')
+                possible_moves = list(chessboard.legal_moves)
+                logging.debug(f'legal moves: {possible_moves}')
+                #logging.debug(f'legal move: {possible_moves[0]}')
+                #output('currmove e7e5')
+                #shuffle(possible_moves)
+                #output(f'bestmove {possible_moves[0]}')
 
-                else:
-                    logging.debug(f'unandled: {smove}')
-                    pass
+            else:
+                logging.debug(f'unandled: {smove}')
+                pass
         
         if new_usb_data:
             new_usb_data = False
@@ -292,7 +310,8 @@ def main():
                                 mystate = "user_shall_place_his_move" 
                             send_leds()
 
-
+    # we quite, stop input thread
+    interrupted.release()
 
 if __name__ == '__main__':
     main()
