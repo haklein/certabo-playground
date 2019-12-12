@@ -212,6 +212,12 @@ def main():
                         logging.info(f'bot opponent played: {new_move}')
                         chessboard = tmp_chessboard
                         mystate = "user_shall_place_oppt_move"
+                else:
+                    # we did receive a startpos without any moves, so we're probably white and it's our turn
+                    chessboard = chess.Board()
+                    logging.debug(f'startpos board state: {board_state}')
+                    mystate = "user_shall_place_his_move"
+                    logging.info(f'we are white, it is our turn')
 
             elif smove.startswith('go'):
                 logging.debug("go...")
