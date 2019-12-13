@@ -92,6 +92,7 @@ class ucireader(threading.Thread):
                 stack.put(line)
             except EOFError:
                 # we quit
+                stack.put('quit')
                 pass
 
 inputthread = ucireader('sys.stdin')
@@ -215,6 +216,7 @@ def main():
                 else:
                     # we did receive a startpos without any moves, so we're probably white and it's our turn
                     chessboard = chess.Board()
+                    # if chessboard.turn == chess.WHITE: 
                     logging.debug(f'startpos board state: {board_state}')
                     mystate = "user_shall_place_his_move"
                     logging.info(f'we are white, it is our turn')
@@ -261,6 +263,11 @@ def main():
                                     move_detect_tries += 1
                                     move = codes.get_moves(chessboard, board_state_usb)
                                 except codes.InvalidMove:
+                                    board1 = chess.BaseBoard(s1)
+                                    board2 = chess.BaseBoard(s2)
+                                    for x in range(chess.A1, chess.H8+1):
+                                        if board1.piece_at(x) != board2.piece_at(x):
+                                            logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
                                     else:
@@ -294,11 +301,23 @@ def main():
                                     if len(move) == 1:
                                         # single move
                                         bestmove = move[0]
+                                        legal_moves = list(chessboard.legal_moves)
+                                        logging.debug(f'valid moves {legal_moves}')
+                                        if chess.Move.from_uci(bestmove) in list(chessboard.legal_moves):
+                                            logging.debug('valid move')
+                                        else:
+                                            logging.debug('invalid move')
                                         logging.info("user moves")
                                         chessboard.push_uci(bestmove)
                                         output(f'bestmove {bestmove}')
                                         mystate = "init"
                                 except codes.InvalidMove:
+                                    board1 = chess.BaseBoard(s1)
+                                    board2 = chess.BaseBoard(s2)
+                                    for x in range(chess.A1, chess.H8+1):
+                                        if board1.piece_at(x) != board2.piece_at(x):
+                                            logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
+
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
                                     else:
