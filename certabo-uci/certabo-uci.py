@@ -273,22 +273,7 @@ def main():
                                     else:
                                         move_detect_tries = 0
                                 if move:
-                                   # highlight right LED
-                                    i, value, i_source, value_source = codes.move2led(
-                                        move, rotate180
-                                    )  # error here if checkmate before
-                                    message = bytearray()
-                                    for j in range(8):
-                                        if j != i and j != i_source:
-                                            message.append(0)
-                                        elif j == i and j == i_source:
-                                            message.append(value + value_source)
-                                        elif j == i:
-                                            message.append(value)
-                                        else:
-                                            message.append(value_source)
-
-                                    send_leds(message)
+                                    send_leds(codes.move2ledbytes(move, rotate180))
                                     logging.info(f'moves difference: {move}')
                                     logging.info("move for opponent")
                                     output(f'info string move for opponent')
@@ -314,9 +299,14 @@ def main():
                                 except codes.InvalidMove:
                                     board1 = chess.BaseBoard(s1)
                                     board2 = chess.BaseBoard(s2)
+                                    wrongmove=""
                                     for x in range(chess.A1, chess.H8+1):
                                         if board1.piece_at(x) != board2.piece_at(x):
                                             logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
+                                            wrongmove += chess.SQUARE_NAMES[x]
+                                            if len(wrongmove) == 4:
+                                                send_leds(codes.move2ledbytes(wrongmove, rotate180))
+
 
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
