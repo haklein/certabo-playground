@@ -373,6 +373,19 @@ def move2led(move, rotate180=False):
         l = int(move[1])
     return 8 - j, 2 ** i, 8 - l, 2 ** k
 
+def move2ledbytes(move, rotate180=False):
+    i, value, i_source, value_source = move2led(move, rotate180)
+    message = bytearray()
+    for j in range(8):
+        if j != i and j != i_source:
+            message.append(0)
+        elif j == i and j == i_source:
+            message.append(value + value_source)
+        elif j == i:
+            message.append(value)
+        else:
+            message.append(value_source)
+    return message
 
 def usb_data_to_FEN(usb_data, rotate180=False):
     global letter
