@@ -136,6 +136,7 @@ def main():
 
     codes.load_calibration(port)
     calibration = False
+    new_setup = True
     calibration_samples_counter = 0
     calibration_samples = []
 
@@ -146,7 +147,6 @@ def main():
     move_detect_tries = 0
     move_detect_max_tries = 3
 
-    calibration = True
 
 
 
@@ -175,6 +175,23 @@ def main():
             except:
                 logging.info("No new data from usb, perhaps chess board not connected")
 
+        if calibration == True and new_usb_data == True:
+            send_leds(b'\xff' * 8)
+            calibration_samples.append(usb_data)
+            new_usb_data = False 
+            logging.info("    adding new calibration sample")
+            calibration_samples_counter += 1
+            if calibration_samples_counter >= 15:
+                logging.info(
+                    "------- we have collected enough samples for averaging ----"
+                )
+                usb_data = codes.statistic_processing_for_calibration(
+                    calibration_samples, False
+                )
+                codes.calibration(usb_data, new_setup, port)
+                calibration = False
+                send_leds()
+
         if not stack.empty():
             smove = stack.get()
             logging.debug(f'>>> {smove} ')
@@ -194,6 +211,10 @@ def main():
             elif smove == 'ucinewgame':
                 logging.debug("new game")
                 # stack.append('position fen ...')
+
+            elif smove.startswith('setoption name Calibrate value true'):
+                logging.info("Calibrating board")
+                calibration = True
 
             elif smove.startswith('position fen'):
                 _, _, fen = smove.split(' ', 2)
