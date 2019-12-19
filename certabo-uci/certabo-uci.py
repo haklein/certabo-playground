@@ -90,6 +90,8 @@ class ucireader(threading.Thread):
             try:
                 line = input()
                 stack.put(line)
+                if line == "quit":
+                    break
             except EOFError:
                 # we quit
                 stack.put('quit')
@@ -183,6 +185,7 @@ def main():
             elif smove == 'uci':
                 output('id name CERTABO physical board')
                 output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
+                output('option name Calibrate type check default false')
                 output('uciok')
 
             elif smove == 'isready':
@@ -232,7 +235,7 @@ def main():
                 #output(f'bestmove {possible_moves[0]}')
 
             else:
-                logging.debug(f'unandled: {smove}')
+                logging.debug(f'unhandled: {smove}')
                 pass
         
         if new_usb_data:
@@ -325,7 +328,7 @@ def main():
                                 mystate = "user_shall_place_his_move" 
                             send_leds()
 
-    # we quite, stop input thread
+    # we quit, stop input thread
     interrupted.release()
 
 if __name__ == '__main__':
