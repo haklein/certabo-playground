@@ -18,6 +18,8 @@ import time as tt
 import threading
 import queue
 
+import serial.tools.list_ports
+
 from socket import *
 from select import *
 
@@ -28,7 +30,6 @@ from random import shuffle
 
 import codes
 
-DEBUG_FAST = False
 DEBUG = True
 
 logging.basicConfig(filename='uci.log', level=logging.DEBUG)
@@ -52,30 +53,9 @@ else:
     portname = args.port
 port = port2number(portname)
 
-board_listen_port, gui_listen_port = port2udp(port)
-logging.info('GUI: Board listen port: %s, gui listen port: %s', board_listen_port, gui_listen_port)
-
-SEND_SOCKET = ("127.0.0.1", board_listen_port)  # send to
-LISTEN_SOCKET = ("127.0.0.1", gui_listen_port)  # listen to
-
-TO_EXE = getattr(sys, "frozen", False)
-
-if TO_EXE:
-    if platform.system() == "Windows":
-        usb_command = ["usbtool.exe"]
-    else:
-        usb_command = ["./usbtool"]
-else:
-    usb_command = ["python2", "usbtool.py"]
-if portname is not None:
-    usb_command.extend(["--port", portname])
-logging.debug("Calling %s", usb_command)
-usb_proc = subprocess.Popen(usb_command)
-
-if not DEBUG_FAST:
-    tt.sleep(1)  # time to make stable COMx connection
-
 stack = queue.Queue()
+serial_in = queue.Queue()
+serial_out = queue.Queue()
 
 interrupted = threading.Lock()
 interrupted.acquire()
@@ -100,6 +80,52 @@ class ucireader(threading.Thread):
 inputthread = ucireader('sys.stdin')
 inputthread.start()
 
+
+interrupted_serial = threading.Lock()
+interrupted_serial.acquire()
+
+class serialreader(threading.Thread):
+    def __init__ (self, device='/dev/ttyUSB0'):
+        threading.Thread.__init__(self)
+        self.device = device
+
+    def run(self):
+        logging.info(f'Opening serial port {self.device}')
+        try:
+            uart = serial.Serial(self.device, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
+            uart_ok = True
+            uart.flushInput()
+        except:
+            logging.info(f'ERROR: Cannot open serial port {self.device}')
+            return
+        while not interrupted_serial.acquire(blocking=False):
+            try:
+                while uart.inWaiting():
+                    logging.debug(f'serial data pending')
+                    message = uart.readline().decode("ascii")
+                    # print(message)
+                    message = message[1: -3]
+                    # print(message)
+                    #if DEBUG:
+                    #    print(len(message.split(" ")), "numbers")
+                    if len(message.split(" ")) == 320:  # 64*5
+                        serial_in.put(message)
+                    message = ""
+                #logging.debug(f'checking for serial data to send out')
+                time.sleep(0.001)
+                if not serial_out.empty():
+                    data = serial_out.get()
+                    serial_out.task_done()
+                    logging.debug(f'Sending to serial: {data}')
+                    uart.write(data)
+            except Exception as e:
+                print("exception during serial read")
+                print(str(e))
+            #time.sleep(0.001)
+
+serialthread = serialreader(portname)
+serialthread.start()
+
 # Disable buffering
 class Unbuffered(object):
     def __init__(self, stream):
@@ -114,16 +140,11 @@ class Unbuffered(object):
         return getattr(self.stream, attr)
 
 def main():
-    sock = socket(AF_INET, SOCK_DGRAM)
-    sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    sock.bind(LISTEN_SOCKET)
-    sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-    recv_list = [sock]
     new_usb_data = False
     usb_data_exist = False
 
     def send_leds(message=b'\x00' * 8):
-        sock.sendto(message, SEND_SOCKET)
+        serial_out.put(message)
 
     send_leds(b'\xff' * 8)
     chessboard = chess.Board()
@@ -162,18 +183,22 @@ def main():
 
     while True:
         smove = ""
-        recv_ready, wtp, xtp = select(recv_list, [], [], 0.002)
 
-        if recv_ready:
+        time.sleep(0.001)
+        # logging.debug(f'testing for items in serial_in queue')
+        if not serial_in.empty():
             try:
-                data, addr = sock.recvfrom(2048)
-                usb_data = list(map(int, data.decode().split(" ")))
+                logging.debug(f'serial data is pending on serial_in queue, running get()')
+                data = serial_in.get()
+                serial_in.task_done()
+                logging.debug(f'serial data received from serial_in queue: {data}')
+                usb_data = list(map(int, data.split(" ")))
                 new_usb_data = True
                 usb_data_exist = True
                 # logging.debug(f'data from usb {usb_data}')
 
-            except:
-                logging.info("No new data from usb, perhaps chess board not connected")
+            except Exception as e:
+                logging.info(f'No new data from usb, perhaps chess board not connected: {str(e)}')
 
         if calibration == True and new_usb_data == True:
             send_leds(b'\xff' * 8)
@@ -194,7 +219,9 @@ def main():
                 send_leds()
 
         if not stack.empty():
+            logging.debug(f'getting uci command from stack')
             smove = stack.get()
+            stack.task_done()
             logging.debug(f'>>> {smove} ')
 
             if smove == 'quit':
@@ -358,6 +385,7 @@ def main():
 
     # we quit, stop input thread
     interrupted.release()
+    interrupted_serial.release()
 
 if __name__ == '__main__':
     main()
