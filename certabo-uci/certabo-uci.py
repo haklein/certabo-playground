@@ -204,6 +204,7 @@ def main():
                 output('id name CERTABO physical board')
                 output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
                 output('option name Calibrate type check default false')
+                output('option name Rotate type check default false')
                 output('uciok')
 
             elif smove == 'isready':
@@ -217,6 +218,10 @@ def main():
             elif smove.startswith('setoption name Calibrate value true'):
                 logging.info("Calibrating board")
                 calibration = True
+
+            elif smove.startswith('setoption name Rotate value true'):
+                logging.info("Rotating board")
+                rotate180 = True
 
             elif smove.startswith('position fen'):
                 _, _, fen = smove.split(' ', 2)
