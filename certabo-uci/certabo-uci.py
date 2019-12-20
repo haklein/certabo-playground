@@ -190,6 +190,7 @@ def main():
                 )
                 codes.calibration(usb_data, new_setup, port)
                 calibration = False
+                output('readyok') # as calibration takes some time, we safely(?) assume that "isready" has already been sent, so we reply readyness
                 send_leds()
 
         if not stack.empty():
@@ -206,7 +207,8 @@ def main():
                 output('uciok')
 
             elif smove == 'isready':
-                output('readyok')
+                if not calibration:
+                    output('readyok')
 
             elif smove == 'ucinewgame':
                 logging.debug("new game")
