@@ -50,6 +50,9 @@ def find_port():
         device = port[0]
         if 'bluetooth' in device.lower():
             continue
+        if port.pid != 0xea60 and port.vid != 0x10c4:
+            logging.debug(f'skipping: {port.hwid}')
+            continue
         try:
             logging.debug('Trying %s', device)
             s = serial.Serial(device)
