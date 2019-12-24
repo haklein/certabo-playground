@@ -68,7 +68,7 @@ class ucireader(threading.Thread):
     def run(self):
         while not interrupted.acquire(blocking=False):
             try:
-                line = input()
+                line = input() # we ignore the specific device and just read via input() from stdin
                 stack.put(line)
                 if line == "quit":
                     break
