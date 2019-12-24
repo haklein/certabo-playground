@@ -88,40 +88,40 @@ class serialreader(threading.Thread):
     def __init__ (self, device='/dev/ttyUSB0'):
         threading.Thread.__init__(self)
         self.device = device
+        self.connected = False
 
     def run(self):
-        logging.info(f'Opening serial port {self.device}')
-        try:
-            uart = serial.Serial(self.device, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
-            uart_ok = True
-            uart.flushInput()
-        except:
-            logging.info(f'ERROR: Cannot open serial port {self.device}')
-            return
         while not interrupted_serial.acquire(blocking=False):
-            try:
-                while uart.inWaiting():
-                    logging.debug(f'serial data pending')
-                    message = uart.readline().decode("ascii")
-                    # print(message)
-                    message = message[1: -3]
-                    # print(message)
-                    #if DEBUG:
-                    #    print(len(message.split(" ")), "numbers")
-                    if len(message.split(" ")) == 320:  # 64*5
-                        serial_in.put(message)
-                    message = ""
-                #logging.debug(f'checking for serial data to send out')
-                time.sleep(0.001)
-                if not serial_out.empty():
-                    data = serial_out.get()
-                    serial_out.task_done()
-                    logging.debug(f'Sending to serial: {data}')
-                    uart.write(data)
-            except Exception as e:
-                print("exception during serial read")
-                print(str(e))
-            #time.sleep(0.001)
+            if not self.connected:
+                try:
+                    logging.info(f'Opening serial port {self.device}')
+                    uart = serial.Serial(self.device, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
+                    uart.flushInput()
+                    self.connected = True
+                except Exception as e:
+                    logging.info(f'ERROR: Cannot open serial port {self.device}: {str(e)}')
+                    self.connected = False
+                    time.sleep(0.1)
+            else:
+                try:
+                    while uart.inWaiting():
+                        # logging.debug(f'serial data pending')
+                        message = uart.readline().decode("ascii")
+                        message = message[1: -3]
+                        #if DEBUG:
+                        #    print(len(message.split(" ")), "numbers")
+                        if len(message.split(" ")) == 320:  # 64*5
+                            serial_in.put(message)
+                        message = ""
+                    time.sleep(0.001)
+                    if not serial_out.empty():
+                        data = serial_out.get()
+                        serial_out.task_done()
+                        logging.debug(f'Sending to serial: {data}')
+                        uart.write(data)
+                except Exception as e:
+                    logging.info(f'Exception during serial communication: {str(e)}')
+                    self.connected = False
 
 serialthread = serialreader(portname)
 serialthread.start()
@@ -179,6 +179,11 @@ def main():
         sys.stdout.flush()
         # logging.debug(line)
 
+    time.sleep(1)
+    send_leds()
+    time.sleep(1)
+    send_leds(b'\xff' * 8)
+    time.sleep(1)
     send_leds()
 
     while True:
@@ -188,10 +193,9 @@ def main():
         # logging.debug(f'testing for items in serial_in queue')
         if not serial_in.empty():
             try:
-                logging.debug(f'serial data is pending on serial_in queue, running get()')
                 data = serial_in.get()
                 serial_in.task_done()
-                logging.debug(f'serial data received from serial_in queue: {data}')
+                # logging.debug(f'serial data received from serial_in queue: {data}')
                 usb_data = list(map(int, data.split(" ")))
                 new_usb_data = True
                 usb_data_exist = True
@@ -373,9 +377,21 @@ def main():
 
 
                             else:
+                                board1 = chess.BaseBoard(s1)
+                                board2 = chess.BaseBoard(s2)
+                                wrongmove=""
+                                for x in range(chess.A1, chess.H8+1):
+                                    if board1.piece_at(x) != board2.piece_at(x):
+                                        logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
+                                        wrongmove += chess.SQUARE_NAMES[x]
+                                if len(wrongmove) == 4:
+                                    send_leds(codes.move2ledbytes(wrongmove, rotate180))
+                                else:
+                                    # plenty of stuff wrong, but no game state, probably board has not initially been set up
+                                    send_leds(b'\xff' * 2 + b'\x00' * 4 + b'\xff' * 2)
+                                output(f'info string place pieces on their places')
                                 if DEBUG:
                                     logging.info("Place pieces on their places")
-                                    output(f'info string place pieces on their places')
                                     logging.info("Virtual board: %s", chessboard.fen())
                         else: # board is the same
                             if mystate == "user_shall_place_oppt_move":
