@@ -99,6 +99,10 @@ class serialreader(threading.Thread):
                         serialport = find_port()
                     else:
                         serialport = self.device
+                    if serialport is None:
+                        logging.info(f'No port found, retrying')
+                        time.sleep(1)
+                        continue
                     logging.info(f'Opening serial port {serialport}')
                     uart = serial.Serial(serialport, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
                     uart.flushInput()
