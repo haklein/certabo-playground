@@ -47,10 +47,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--port")
 args = parser.parse_args()
 
-if args.port is None:
-    portname = find_port()
-else:
+if args.port is not None:
     portname = args.port
+else:
+    portname = 'auto'
 port = port2number(portname)
 
 stack = queue.Queue()
@@ -85,7 +85,7 @@ interrupted_serial = threading.Lock()
 interrupted_serial.acquire()
 
 class serialreader(threading.Thread):
-    def __init__ (self, device='/dev/ttyUSB0'):
+    def __init__ (self, device='auto'):
         threading.Thread.__init__(self)
         self.device = device
         self.connected = False
@@ -94,12 +94,17 @@ class serialreader(threading.Thread):
         while not interrupted_serial.acquire(blocking=False):
             if not self.connected:
                 try:
-                    logging.info(f'Opening serial port {self.device}')
-                    uart = serial.Serial(self.device, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
+                    if self.device is 'auto':
+                        logging.info(f'Auto-detecting serial port')
+                        serialport = find_port()
+                    else:
+                        serialport = self.device
+                    logging.info(f'Opening serial port {serialport}')
+                    uart = serial.Serial(serialport, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
                     uart.flushInput()
                     self.connected = True
                 except Exception as e:
-                    logging.info(f'ERROR: Cannot open serial port {self.device}: {str(e)}')
+                    logging.info(f'ERROR: Cannot open serial port {serialport}: {str(e)}')
                     self.connected = False
                     time.sleep(0.1)
             else:
