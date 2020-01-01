@@ -21,7 +21,7 @@ Just specify the engine in the `config.yaml`. Then you can play on lichess with 
 
 * shake out bugs
 * clean up logging (very chatty for now)
-* enable calibration via UCI setting
+* better LED indication when pieces are set up in a wrong way
 
 ## License
 
