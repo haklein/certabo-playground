@@ -151,6 +151,7 @@ class Unbuffered(object):
         return getattr(self.stream, attr)
 
 def main():
+    global portname
     new_usb_data = False
     usb_data_exist = False
     serial_thread_spawned = False
@@ -266,7 +267,7 @@ def main():
             elif smove.startswith('setoption name Port value'):
                 _, _, _, _, tmp_portname = smove.split(' ', 4)
                 logging.info(f"Setoption Port received: {tmp_portname}")
-                pass
+                portname = tmp_portname
 
             elif smove.startswith('setoption name Calibrate value true'):
                 logging.info("Calibrating board")
