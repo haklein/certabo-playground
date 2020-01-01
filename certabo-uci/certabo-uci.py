@@ -76,7 +76,7 @@ class ucireader(threading.Thread):
             except EOFError:
                 # we quit
                 stack.put('quit')
-                pass
+                break
 
 inputthread = ucireader('sys.stdin')
 inputthread.start()
