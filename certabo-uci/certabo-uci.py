@@ -17,6 +17,8 @@ import subprocess
 import time as tt
 import threading
 import queue
+import serial
+import fcntl
 
 import serial.tools.list_ports
 
@@ -32,7 +34,7 @@ import codes
 
 DEBUG = True
 
-logging.basicConfig(filename='uci.log', level=logging.DEBUG)
+logging.basicConfig(filename='/tmp/uci.log', level=logging.DEBUG, format='%(process)d %(levelname)s %(message)s')
 
 from utils import port2number, port2udp, find_port, get_engine_list, get_book_list, coords_in
 from constants import CERTABO_SAVE_PATH, CERTABO_DATA_PATH, MAX_DEPTH_DEFAULT
@@ -47,10 +49,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--port")
 args = parser.parse_args()
 
+portname = 'auto'
 if args.port is not None:
     portname = args.port
-else:
-    portname = 'auto'
 port = port2number(portname)
 
 stack = queue.Queue()
@@ -105,6 +106,9 @@ class serialreader(threading.Thread):
                         continue
                     logging.info(f'Opening serial port {serialport}')
                     uart = serial.Serial(serialport, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
+                    logging.info(f'Attempting to lock {serialport}')
+                    fcntl.flock(uart.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    logging.info(f'Flushing input on {serialport}')
                     uart.flushInput()
                     self.connected = True
                 except Exception as e:
@@ -132,8 +136,6 @@ class serialreader(threading.Thread):
                     logging.info(f'Exception during serial communication: {str(e)}')
                     self.connected = False
 
-serialthread = serialreader(portname)
-serialthread.start()
 
 # Disable buffering
 class Unbuffered(object):
@@ -151,6 +153,7 @@ class Unbuffered(object):
 def main():
     new_usb_data = False
     usb_data_exist = False
+    serial_thread_spawned = False
 
     def send_leds(message=b'\x00' * 8):
         serial_out.put(message)
@@ -164,7 +167,6 @@ def main():
     mystate = "init"
 
 
-    codes.load_calibration(port)
     calibration = False
     new_setup = True
     calibration_samples_counter = 0
@@ -245,15 +247,26 @@ def main():
                 output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
                 output('option name Calibrate type check default false')
                 output('option name Rotate type check default false')
+                output('option name Port type string default auto')
                 output('uciok')
 
             elif smove == 'isready':
+                if  not serial_thread_spawned:
+                    serial_thread_spawned = True
+                    serialthread = serialreader(portname)
+                    serialthread.start()
+                    codes.load_calibration(port)
                 if not calibration:
                     output('readyok')
 
             elif smove == 'ucinewgame':
                 logging.debug("new game")
                 # stack.append('position fen ...')
+
+            elif smove.startswith('setoption name Port value'):
+                _, _, _, _, tmp_portname = smove.split(' ', 4)
+                logging.info(f"Setoption Port received: {tmp_portname}")
+                pass
 
             elif smove.startswith('setoption name Calibrate value true'):
                 logging.info("Calibrating board")
