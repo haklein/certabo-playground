@@ -348,11 +348,10 @@ def main():
                                     move_detect_tries += 1
                                     move = codes.get_moves(chessboard, board_state_usb)
                                 except codes.InvalidMove:
-                                    board1 = chess.BaseBoard(s1)
-                                    board2 = chess.BaseBoard(s2)
-                                    for x in range(chess.A1, chess.H8+1):
-                                        if board1.piece_at(x) != board2.piece_at(x):
-                                            logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
+                                    diffmap = codes.diff2squareset(s1, s2)
+                                    logging.debug(f'Difference on Squares:\n{diffmap}')
+                                    send_leds(codes.squareset2ledbytes(diffmap))
+
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
                                     else:
@@ -382,16 +381,9 @@ def main():
                                         output(f'bestmove {bestmove}')
                                         mystate = "init"
                                 except codes.InvalidMove:
-                                    board1 = chess.BaseBoard(s1)
-                                    board2 = chess.BaseBoard(s2)
-                                    wrongmove=""
-                                    for x in range(chess.A1, chess.H8+1):
-                                        if board1.piece_at(x) != board2.piece_at(x):
-                                            logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
-                                            wrongmove += chess.SQUARE_NAMES[x]
-                                            if len(wrongmove) == 4:
-                                                send_leds(codes.move2ledbytes(wrongmove, rotate180))
-
+                                    diffmap = codes.diff2squareset(s1, s2)
+                                    logging.debug(f'Difference on Squares:\n{diffmap}')
+                                    send_leds(codes.squareset2ledbytes(diffmap))
 
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
@@ -400,18 +392,9 @@ def main():
 
 
                             else:
-                                board1 = chess.BaseBoard(s1)
-                                board2 = chess.BaseBoard(s2)
-                                wrongmove=""
-                                for x in range(chess.A1, chess.H8+1):
-                                    if board1.piece_at(x) != board2.piece_at(x):
-                                        logging.debug(f'Difference on Square {chess.SQUARE_NAMES[x]} - {board1.piece_at(x)} <-> {board2.piece_at(x)}')
-                                        wrongmove += chess.SQUARE_NAMES[x]
-                                if len(wrongmove) == 4:
-                                    send_leds(codes.move2ledbytes(wrongmove, rotate180))
-                                else:
-                                    # plenty of stuff wrong, but no game state, probably board has not initially been set up
-                                    send_leds(b'\xff' * 2 + b'\x00' * 4 + b'\xff' * 2)
+                                diffmap = codes.diff2squareset(s1, s2)
+                                logging.debug(f'Difference on Squares:\n{diffmap}')
+                                send_leds(codes.squareset2ledbytes(diffmap))
                                 output(f'info string place pieces on their places')
                                 if DEBUG:
                                     logging.info("Place pieces on their places")
