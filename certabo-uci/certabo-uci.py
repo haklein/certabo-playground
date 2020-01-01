@@ -159,7 +159,6 @@ def main():
     def send_leds(message=b'\x00' * 8):
         serial_out.put(message)
 
-    send_leds(b'\xff' * 8)
     chessboard = chess.Board()
     board_state = chessboard.fen()
     move = []
@@ -180,9 +179,6 @@ def main():
     move_detect_tries = 0
     move_detect_max_tries = 3
 
-
-
-
     out = Unbuffered(sys.stdout)
     # out = sys.stdout
     def output(line):
@@ -190,13 +186,6 @@ def main():
         # print('\n', file=out)
         sys.stdout.flush()
         # logging.debug(line)
-
-    time.sleep(1)
-    send_leds()
-    time.sleep(1)
-    send_leds(b'\xff' * 8)
-    time.sleep(1)
-    send_leds()
 
     while True:
         smove = ""
@@ -217,11 +206,14 @@ def main():
                 logging.info(f'No new data from usb, perhaps chess board not connected: {str(e)}')
 
         if calibration == True and new_usb_data == True:
-            send_leds(b'\xff' * 8)
             calibration_samples.append(usb_data)
             new_usb_data = False 
             logging.info("    adding new calibration sample")
             calibration_samples_counter += 1
+            if calibration_samples_counter %2:
+                send_leds(b'\xff\xff\x00\x00\x00\x00\xff\xff')
+            else:
+                send_leds()
             if calibration_samples_counter >= 15:
                 logging.info(
                     "------- we have collected enough samples for averaging ----"
@@ -257,6 +249,13 @@ def main():
                     serialthread = serialreader(portname)
                     serialthread.start()
                     codes.load_calibration(port)
+                    # make some nice blinky
+                    send_leds(codes.squareset2ledbytes(chess.SquareSet(chess.BB_LIGHT_SQUARES)))
+                    time.sleep(1)
+                    send_leds(codes.squareset2ledbytes(chess.SquareSet(chess.BB_DARK_SQUARES)))
+                    time.sleep(1)
+                    send_leds()
+
                 if not calibration:
                     output('readyok')
 
