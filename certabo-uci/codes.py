@@ -4,6 +4,7 @@ import os
 import chess
 from constants import CERTABO_DATA_PATH
 import logging
+import struct
 
 # data conversion
 p, r, n, b, k, q, P, R, N, B, K, Q = [], [], [], [], [], [], [], [], [], [], [], []
@@ -386,6 +387,19 @@ def move2ledbytes(move, rotate180=False):
         else:
             message.append(value_source)
     return message
+
+def diff2squareset(s1, s2):
+    board1 = chess.BaseBoard(s1)
+    board2 = chess.BaseBoard(s2)
+    diffmap = chess.SquareSet()
+    for x in range(chess.A1, chess.H8+1):
+        if board1.piece_at(x) != board2.piece_at(x):
+            diffmap.add(x)
+    return diffmap
+
+def squareset2ledbytes(squareset):
+    # we pack the uint64 squareset bitmask into a big endian bytearray
+    return struct.pack('>Q',squareset)
 
 def usb_data_to_FEN(usb_data, rotate180=False):
     global letter
