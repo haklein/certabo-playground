@@ -95,7 +95,7 @@ class serialreader(threading.Thread):
         while not interrupted_serial.acquire(blocking=False):
             if not self.connected:
                 try:
-                    if self.device is 'auto':
+                    if self.device == 'auto':
                         logging.info(f'Auto-detecting serial port')
                         serialport = find_port()
                     else:
