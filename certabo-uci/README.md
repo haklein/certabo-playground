@@ -2,6 +2,9 @@
 
 This UCI engine allows to use the CERTABO eboard with any chess software that supports UCI engines. It's a proof of concept and probably still has some rough edges.
 
+A short video showing some of the features can be found here:
+https://youtu.be/qETHjeTY-SY
+
 ## Getting started
 
 ### Prerequisites
@@ -21,7 +24,6 @@ Just specify the engine in the `config.yaml`. Then you can play on lichess with 
 
 * shake out bugs
 * clean up logging (very chatty for now)
-* better LED indication when pieces are set up in a wrong way
 
 ## License
 
