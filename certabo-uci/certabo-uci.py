@@ -239,6 +239,7 @@ def main():
                 output('id name CERTABO physical board')
                 output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
                 output('option name Calibrate type check default false')
+                output('option name AddPiece type check default false')
                 output('option name Rotate type check default false')
                 output('option name Port type string default auto')
                 output('uciok')
@@ -267,6 +268,11 @@ def main():
                 _, _, _, _, tmp_portname = smove.split(' ', 4)
                 logging.info(f"Setoption Port received: {tmp_portname}")
                 portname = tmp_portname
+
+            elif smove.startswith('setoption name AddPiece value true'):
+                logging.info("Adding new pieces to existing calibration")
+                calibration = True
+                new_setup = False
 
             elif smove.startswith('setoption name Calibrate value true'):
                 logging.info("Calibrating board")
