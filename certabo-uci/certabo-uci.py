@@ -11,6 +11,7 @@ import re
 import sys
 import time
 import logging
+import logging.handlers
 import os
 import argparse
 import subprocess
@@ -32,12 +33,18 @@ from random import shuffle
 
 import codes
 
-DEBUG = True
-
-logging.basicConfig(filename='/tmp/uci.log', level=logging.DEBUG, format='%(process)d %(levelname)s %(message)s')
-
 from utils import port2number, port2udp, find_port, get_engine_list, get_book_list, coords_in
 from constants import CERTABO_SAVE_PATH, CERTABO_DATA_PATH, MAX_DEPTH_DEFAULT
+
+DEBUG = True
+
+logging.basicConfig(filename='/dev/null', level=logging.DEBUG, format='%(process)d %(asctime)s %(levelname)s %(module)s  %(message)s')
+logger = logging.getLogger()
+filehandler = logging.handlers.TimedRotatingFileHandler(
+    os.path.join(CERTABO_DATA_PATH, "certabo-uci.log"), backupCount=12
+)
+logger.addHandler(filehandler)
+
 
 for d in (CERTABO_SAVE_PATH, CERTABO_DATA_PATH):
     try:
