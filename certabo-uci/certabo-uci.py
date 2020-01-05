@@ -38,13 +38,17 @@ from constants import CERTABO_SAVE_PATH, CERTABO_DATA_PATH, MAX_DEPTH_DEFAULT
 
 DEBUG = True
 
-logging.basicConfig(filename='/dev/null', level=logging.DEBUG, format='%(process)d %(asctime)s %(levelname)s %(module)s  %(message)s')
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s %(message)s')
+
 filehandler = logging.handlers.TimedRotatingFileHandler(
     os.path.join(CERTABO_DATA_PATH, "certabo-uci.log"), backupCount=12
 )
+filehandler.setFormatter(formatter)
 logger.addHandler(filehandler)
 
+logging.info("certabi-uci.py startup")
 
 for d in (CERTABO_SAVE_PATH, CERTABO_DATA_PATH):
     try:
