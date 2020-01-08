@@ -9,16 +9,32 @@ https://youtu.be/qETHjeTY-SY
 
 ### Prerequisites
 
-You have to do the calibration with the CERTABO software once. This will then be loaded by the UCI engine.
+You have to do the calibration once. This will then be loaded by the UCI engine on subsequent runs. When you want to add more pieces (e.g. 2nd pair of queens),
+just use the "AddPiece" option and replace the existing queens with the new ones before start of the engine. You only need to do that once, all added pieces
+will be stored in the calibration file. You can add as many sets as you want. A new calibration will reset to scratch.
+
+## Chess GUIs
 
 ### pychess
 
-Just add it as engine in pychess. I've added a wrapper script (`uci.sh`) to specify the port as parameter (`--port /dev/ttyUSB0` in my case).
+Just add it as engine in pychess and select it as one of the opponents.
 
 ### lichess bot
 
 This has also been used successfully with the official lichess bot: https://github.com/careless25/lichess-bot
 Just specify the engine in the `config.yaml`. Then you can play on lichess with the CERTABO eboard (be aware that your account needs to be a bot account).
+
+### Arena 3.9 Beta (Linux)
+
+Just add the engine and use it as one of the engines in a tournament.
+
+### jcchess
+
+Just add the engine and select it as player.
+
+### SCID vs PC
+
+Add the engine in a two engine tournament with a single game
 
 ## Todo
 
