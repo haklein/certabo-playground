@@ -58,6 +58,8 @@ for d in (CERTABO_SAVE_PATH, CERTABO_DATA_PATH):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port")
+# ignore additional parameters
+# parser.add_argument('bar', nargs='?')
 args = parser.parse_args()
 
 portname = 'auto'
@@ -176,7 +178,7 @@ def main():
     starting_position = chess.STARTING_FEN
     rotate180 = False
     mystate = "init"
-
+    go = False
 
     calibration = False
     new_setup = True
@@ -256,7 +258,7 @@ def main():
                 output('uciok')
 
             elif smove == 'isready':
-                if  not serial_thread_spawned:
+                if not serial_thread_spawned:
                     serial_thread_spawned = True
                     serialthread = serialreader(portname)
                     serialthread.start()
@@ -295,6 +297,7 @@ def main():
 
             elif smove.startswith('position fen'):
                 _, _, fen = smove.split(' ', 2)
+                tmp_chessboard = chess.Board(fen)
                 logging.debug(f'fen: {fen}')
 
             elif smove.startswith('position startpos'):
@@ -310,19 +313,19 @@ def main():
                             tmp_chessboard.push_uci(move)
                         board_state = tmp_chessboard.fen()
                         logging.debug(f'startpos board state: {board_state}')
-                        new_move = codes.get_moves(chessboard, board_state)
-                        logging.info(f'bot opponent played: {new_move}')
-                        chessboard = tmp_chessboard
-                        mystate = "user_shall_place_oppt_move"
+                        if (tmp_chessboard.turn == chess.WHITE):
+                            logging.debug(f'it is WHITEs turn')
+                        else:
+                            logging.debug(f'it is BLACKs turn')
                 else:
                     # we did receive a startpos without any moves, so we're probably white and it's our turn
-                    chessboard = chess.Board()
+                    logging.info(f'stating with initial board position')
+                    tmp_chessboard = chess.Board()
                     # if chessboard.turn == chess.WHITE: 
                     logging.debug(f'startpos board state: {board_state}')
-                    mystate = "user_shall_place_his_move"
-                    logging.info(f'we are white, it is our turn')
 
             elif smove.startswith('go'):
+                go = True
                 logging.debug("go...")
                 # output('resign')
                 possible_moves = list(chessboard.legal_moves)
@@ -331,6 +334,20 @@ def main():
                 #output('currmove e7e5')
                 #shuffle(possible_moves)
                 #output(f'bestmove {possible_moves[0]}')
+                if tmp_chessboard.fen() == chess.STARTING_FEN:
+                    # we did receive a starting FEN, so it is our turn and we're white
+                    logging.info(f'we received a starting FEN, we are white and it is our turn')
+                    mystate = "user_shall_place_his_move"
+                else:
+                    try:
+                        new_move = codes.get_moves(chessboard, tmp_chessboard.fen)
+                        logging.info(f'bot opponent played: {new_move}')
+                        chessboard = tmp_chessboard
+                        mystate = "user_shall_place_oppt_move"
+                    except:
+                        logging.debug(f'cannot find move, assume new game from FEN')
+                        chessboard = tmp_chessboard
+                        mystate = "user_shall_place_his_move"
 
             else:
                 logging.debug(f'unhandled: {smove}')
@@ -351,12 +368,13 @@ def main():
                     test_state = codes.usb_data_to_FEN(usb_data_processed, rotate180)
                     if test_state != "":
                         board_state_usb = test_state
+                        output(f'info string FEN {board_state_usb}')
                         game_process_just_started = False
 
                         # compare virtual board state and state from usb
                         s1 = chessboard.board_fen()
                         s2 = board_state_usb.split(" ")[0]
-                        if s1 != s2:
+                        if (s1 != s2) and go:
                             if mystate == "user_shall_place_oppt_move":
 
 
@@ -396,6 +414,7 @@ def main():
                                         chessboard.push_uci(bestmove)
                                         output(f'bestmove {bestmove}')
                                         mystate = "init"
+                                        go = False
                                 except codes.InvalidMove:
                                     diffmap = codes.diff2squareset(s1, s2)
                                     logging.debug(f'Difference on Squares:\n{diffmap}')
