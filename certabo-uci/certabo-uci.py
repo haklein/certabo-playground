@@ -94,7 +94,6 @@ class ucireader(threading.Thread):
 inputthread = ucireader('sys.stdin')
 inputthread.start()
 
-
 interrupted_serial = threading.Lock()
 interrupted_serial.acquire()
 
@@ -119,9 +118,9 @@ class serialreader(threading.Thread):
                         continue
                     logging.info(f'Opening serial port {serialport}')
                     uart = serial.Serial(serialport, 38400, timeout=2.5)  # 0-COM1, 1-COM2 / speed /
-                    logging.info(f'Attempting to lock {serialport}')
+                    logging.debug(f'Attempting to lock {serialport}')
                     fcntl.flock(uart.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    logging.info(f'Flushing input on {serialport}')
+                    logging.debug(f'Flushing input on {serialport}')
                     uart.flushInput()
                     self.connected = True
                 except Exception as e:
@@ -149,20 +148,6 @@ class serialreader(threading.Thread):
                     logging.info(f'Exception during serial communication: {str(e)}')
                     self.connected = False
 
-
-# Disable buffering
-class Unbuffered(object):
-    def __init__(self, stream):
-        self.stream = stream
-    def write(self, data):
-        self.stream.write(data)
-        self.stream.flush()
-        #sys.stderr.write(data)
-        #sys.stderr.flush()
-        logging.debug(f'<<< {data} ')
-    def __getattr__(self, attr):
-        return getattr(self.stream, attr)
-
 def main():
     global portname
     new_usb_data = False
@@ -173,7 +158,6 @@ def main():
         serial_out.put(message)
 
     chessboard = chess.Board()
-    board_state = chessboard.fen()
     move = []
     starting_position = chess.STARTING_FEN
     rotate180 = False
@@ -191,12 +175,14 @@ def main():
     move_detect_tries = 0
     move_detect_max_tries = 3
 
-    out = Unbuffered(sys.stdout)
+    #out = Unbuffered(sys.stdout)
     # out = sys.stdout
     def output(line):
-        print(line, file=out)
-        # print('\n', file=out)
+        logging.debug(f'<<< {line} ')
+        print(line)
         sys.stdout.flush()
+        #print(line, file=out)
+        # print('\n', file=out)
         # logging.debug(line)
 
     while True:
@@ -307,8 +293,7 @@ def main():
                         tmp_chessboard.push_uci(move)
                 else:
                     tmp_chessboard = chess.Board(fen)
-                board_state = tmp_chessboard.fen()
-                logging.debug(f'position fen board state: {board_state}')
+                logging.debug(f'position fen board state: {tmp_chessboard.fen()}')
                 logging.debug(f'fen: {fen}')
 
             elif smove.startswith('position startpos'):
@@ -326,8 +311,7 @@ def main():
                     logging.info(f'stating with initial board position')
                     tmp_chessboard = chess.Board()
 
-                board_state = tmp_chessboard.fen()
-                logging.debug(f'position startpos board state: {board_state}')
+                logging.debug(f'position startpos board state: {tmp_chessboard.fen()}')
 
             elif smove.startswith('go'):
                 logging.debug("go...")
