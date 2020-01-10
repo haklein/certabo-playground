@@ -78,16 +78,13 @@ stack = queue.Queue()
 serial_in = queue.Queue()
 serial_out = queue.Queue()
 
-interrupted = threading.Lock()
-interrupted.acquire()
-
 class ucireader(threading.Thread):
     def __init__ (self, device='sys.stdin'):
         threading.Thread.__init__(self)
         self.device = device
 
     def run(self):
-        while not interrupted.acquire(blocking=False):
+        while True:
             try:
                 line = input() # we ignore the specific device and just read via input() from stdin
                 stack.put(line)
@@ -99,10 +96,8 @@ class ucireader(threading.Thread):
                 break
 
 inputthread = ucireader('sys.stdin')
+inputthread.daemon = True
 inputthread.start()
-
-interrupted_serial = threading.Lock()
-interrupted_serial.acquire()
 
 class serialreader(threading.Thread):
     def __init__ (self, device='auto'):
@@ -111,7 +106,7 @@ class serialreader(threading.Thread):
         self.connected = False
 
     def run(self):
-        while not interrupted_serial.acquire(blocking=False):
+        while True:
             if not self.connected:
                 try:
                     if self.device == 'auto':
@@ -254,6 +249,7 @@ def main():
                 if not serial_thread_spawned:
                     serial_thread_spawned = True
                     serialthread = serialreader(portname)
+                    serialthread.daemon = True
                     serialthread.start()
                     codes.load_calibration(port)
                     # make some nice blinky
@@ -413,10 +409,6 @@ def main():
                                 logging.info("user has moved opponent, now it's his own turn")
                                 mystate = "user_shall_place_his_move" 
                             send_leds()
-
-    # we quit, stop input and serial thread
-    interrupted.release()
-    interrupted_serial.release()
 
 if __name__ == '__main__':
     main()
