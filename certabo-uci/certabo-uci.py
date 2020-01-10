@@ -350,23 +350,11 @@ def main():
                         s2 = board_state_usb.split(" ")[0]
                         if (s1 != s2) and (mystate != 'init'):
                             if mystate == "user_shall_place_oppt_move":
-                                try:
-                                    move_detect_tries += 1
-                                    move = codes.get_moves(chessboard, board_state_usb)
-                                except codes.InvalidMove:
-                                    diffmap = codes.diff2squareset(s1, s2)
-                                    logging.debug(f'Difference on Squares:\n{diffmap}')
-                                    send_leds(codes.squareset2ledbytes(diffmap))
-
-                                    if move_detect_tries > move_detect_max_tries:
-                                        logging.info("Invalid move")
-                                    else:
-                                        move_detect_tries = 0
-                                if move:
-                                    send_leds(codes.move2ledbytes(move, rotate180))
-                                    logging.info(f'moves difference: {move}')
-                                    logging.info("move for opponent")
-                                    output(f'info string move for opponent')
+                                diffmap = codes.diff2squareset(s1, s2)
+                                logging.debug(f'Difference on Squares:\n{diffmap}')
+                                send_leds(codes.squareset2ledbytes(diffmap))
+                                logging.info("move for opponent")
+                                output(f'info string move for opponent')
                             elif mystate == "user_shall_place_his_move":
                                 try:
                                     move_detect_tries += 1
@@ -377,15 +365,14 @@ def main():
                                         # single move
                                         bestmove = move[0]
                                         legal_moves = list(chessboard.legal_moves)
-                                        logging.debug(f'valid moves {legal_moves}')
                                         if chess.Move.from_uci(bestmove) in list(chessboard.legal_moves):
                                             logging.debug('valid move')
+                                            logging.info("user moves")
+                                            chessboard.push_uci(bestmove)
+                                            output(f'bestmove {bestmove}')
+                                            mystate = "init"
                                         else:
-                                            logging.debug('invalid move')
-                                        logging.info("user moves")
-                                        chessboard.push_uci(bestmove)
-                                        output(f'bestmove {bestmove}')
-                                        mystate = "init"
+                                            logging.info('invalid move')
                                 except codes.InvalidMove:
                                     diffmap = codes.diff2squareset(s1, s2)
                                     logging.debug(f'Difference on Squares:\n{diffmap}')
@@ -400,10 +387,7 @@ def main():
                                 diffmap = codes.diff2squareset(s1, s2)
                                 logging.debug(f'Difference on Squares:\n{diffmap}')
                                 send_leds(codes.squareset2ledbytes(diffmap))
-                                output(f'info string place pieces on their places')
-                                if DEBUG:
-                                    logging.info("Place pieces on their places")
-                                    logging.info("Virtual board: %s", chessboard.fen())
+                                output(f'info string place pieces on their places: {chessboard.fen()}')
                         else: # board is the same
                             if mystate == "user_shall_place_oppt_move":
                                 logging.info("user has moved opponent, now it's his own turn")
