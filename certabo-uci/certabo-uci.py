@@ -12,6 +12,7 @@ import sys
 import time
 import logging
 import logging.handlers
+import traceback
 import os
 import argparse
 import subprocess
@@ -47,6 +48,12 @@ filehandler = logging.handlers.TimedRotatingFileHandler(
 )
 filehandler.setFormatter(formatter)
 logger.addHandler(filehandler)
+
+# log unhandled exceptions to the log file
+def my_excepthook(excType, excValue, traceback, logger=logger):
+    logger.error("Uncaught exception",
+                 exc_info=(excType, excValue, traceback))
+sys.excepthook = my_excepthook
 
 logging.info("certabi-uci.py startup")
 
@@ -280,39 +287,28 @@ def main():
                 logging.info("Rotating board")
                 rotate180 = True
 
-            elif ucicommand.startswith('position fen'):
-                _, _, fen = ucicommand.split(' ', 2)
-                if 'moves' in fen:
-                    logging.debug(f'position fen received with additional moves: {fen}')
-                    x = fen.split(' moves ')
-                    logging.debug(f'x: {x}')
-                    logging.debug(f'fen: {x[0]}')
-                    logging.debug(f'moves: {x[1]}')
-                    tmp_chessboard = chess.Board(x[0])
-                    for move in x[1].split(' '):
-                        logging.debug(f'move: {move}')
-                        tmp_chessboard.push_uci(move)
-                else:
+            elif ucicommand.startswith('position'):
+                if 'startpos' in ucicommand:
+                    logging.info(f'position startpos received')
+                    tmp_chessboard = chess.Board()
+                elif 'fen' in ucicommand:
+                    _, _, fen  = ucicommand.split(' ',2)
+                    if ' moves ' in fen:
+                        fen = fen.split(' moves ')[0]
+                    logging.info(f'position fen received: {fen}')
                     tmp_chessboard = chess.Board(fen)
-                logging.debug(f'position fen board state: {tmp_chessboard.fen()}')
-                logging.debug(f'fen: {fen}')
-
-            elif ucicommand.startswith('position startpos'):
-                parameters = ucicommand.split(' ')
-                logging.debug(f'startpos received {parameters}')
-
-                #logging.info(f'{len(parameters)}')
-                if len(parameters)>2:
-                    if parameters[2] == 'moves':
-                        tmp_chessboard = chess.Board()
-                        for move in parameters[3:]:
-                            logging.debug(f'move: {move}')
-                            tmp_chessboard.push_uci(move)
                 else:
-                    logging.info(f'stating with initial board position')
+                    logging.info(f'ERROR: position received without either startpos keyword or fen. Assuming startpos.')
                     tmp_chessboard = chess.Board()
 
-                logging.debug(f'position startpos board state: {tmp_chessboard.fen()}')
+                if ' moves ' in ucicommand:
+                    moves = ucicommand.split(' moves ')[1].split(' ')
+                    logging.info(f'position contains moves: {moves}')
+                    for move in moves:
+                        logging.debug(f'pushing move: {move}')
+                        tmp_chessboard.push_uci(move)
+
+                logging.info(f'position board state: {tmp_chessboard.fen()}')
 
             elif ucicommand.startswith('go'):
                 logging.debug("go...")
