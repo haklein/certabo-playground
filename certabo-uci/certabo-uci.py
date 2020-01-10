@@ -158,6 +158,7 @@ def main():
         serial_out.put(message)
 
     chessboard = chess.Board()
+    tmp_chessboard = chess.Board()
     move = []
     starting_position = chess.STARTING_FEN
     rotate180 = False
@@ -186,7 +187,7 @@ def main():
         # logging.debug(line)
 
     while True:
-        smove = ""
+        ucicommand = ""
 
         time.sleep(0.001)
         # logging.debug(f'testing for items in serial_in queue')
@@ -226,14 +227,14 @@ def main():
 
         if not stack.empty():
             logging.debug(f'getting uci command from stack')
-            smove = stack.get()
+            ucicommand = stack.get()
             stack.task_done()
-            logging.debug(f'>>> {smove} ')
+            logging.debug(f'>>> {ucicommand} ')
 
-            if smove == 'quit':
+            if ucicommand == 'quit':
                 break
 
-            elif smove == 'uci':
+            elif ucicommand == 'uci':
                 output('id name CERTABO physical board')
                 output('id author Harald Klein (based on work from Thomas Ahle & Contributors)')
                 output('option name Calibrate type check default false')
@@ -242,7 +243,7 @@ def main():
                 output('option name Port type string default auto')
                 output('uciok')
 
-            elif smove == 'isready':
+            elif ucicommand == 'isready':
                 if not serial_thread_spawned:
                     serial_thread_spawned = True
                     serialthread = serialreader(portname)
@@ -258,29 +259,29 @@ def main():
                 if not calibration:
                     output('readyok')
 
-            elif smove == 'ucinewgame':
+            elif ucicommand == 'ucinewgame':
                 logging.debug("new game")
 
-            elif smove.startswith('setoption name Port value'):
-                _, _, _, _, tmp_portname = smove.split(' ', 4)
+            elif ucicommand.startswith('setoption name Port value'):
+                _, _, _, _, tmp_portname = ucicommand.split(' ', 4)
                 logging.info(f"Setoption Port received: {tmp_portname}")
                 portname = tmp_portname
 
-            elif smove.startswith('setoption name AddPiece value true'):
+            elif ucicommand.startswith('setoption name AddPiece value true'):
                 logging.info("Adding new pieces to existing calibration")
                 calibration = True
                 new_setup = False
 
-            elif smove.startswith('setoption name Calibrate value true'):
+            elif ucicommand.startswith('setoption name Calibrate value true'):
                 logging.info("Calibrating board")
                 calibration = True
 
-            elif smove.startswith('setoption name Rotate value true'):
+            elif ucicommand.startswith('setoption name Rotate value true'):
                 logging.info("Rotating board")
                 rotate180 = True
 
-            elif smove.startswith('position fen'):
-                _, _, fen = smove.split(' ', 2)
+            elif ucicommand.startswith('position fen'):
+                _, _, fen = ucicommand.split(' ', 2)
                 if 'moves' in fen:
                     logging.debug(f'position fen received with additional moves: {fen}')
                     x = fen.split(' moves ')
@@ -296,8 +297,8 @@ def main():
                 logging.debug(f'position fen board state: {tmp_chessboard.fen()}')
                 logging.debug(f'fen: {fen}')
 
-            elif smove.startswith('position startpos'):
-                parameters = smove.split(' ')
+            elif ucicommand.startswith('position startpos'):
+                parameters = ucicommand.split(' ')
                 logging.debug(f'startpos received {parameters}')
 
                 #logging.info(f'{len(parameters)}')
@@ -313,7 +314,7 @@ def main():
 
                 logging.debug(f'position startpos board state: {tmp_chessboard.fen()}')
 
-            elif smove.startswith('go'):
+            elif ucicommand.startswith('go'):
                 logging.debug("go...")
                 possible_moves = list(chessboard.legal_moves)
                 logging.debug(f'legal moves: {possible_moves}')
@@ -333,7 +334,7 @@ def main():
                         mystate = "user_shall_place_his_move"
 
             else:
-                logging.debug(f'unhandled: {smove}')
+                logging.debug(f'unhandled: {ucicommand}')
                 pass
         
         if new_usb_data:
