@@ -40,7 +40,11 @@ from constants import CERTABO_SAVE_PATH, CERTABO_DATA_PATH, MAX_DEPTH_DEFAULT
 DEBUG = True
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
+
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s %(message)s')
 
 filehandler = logging.handlers.TimedRotatingFileHandler(
@@ -65,8 +69,6 @@ for d in (CERTABO_SAVE_PATH, CERTABO_DATA_PATH):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port")
-# ignore additional parameters
-# parser.add_argument('bar', nargs='?')
 args = parser.parse_args()
 
 portname = 'auto'
@@ -179,21 +181,15 @@ def main():
     move_detect_tries = 0
     move_detect_max_tries = 3
 
-    #out = Unbuffered(sys.stdout)
-    # out = sys.stdout
     def output(line):
         logging.debug(f'<<< {line} ')
         print(line)
         sys.stdout.flush()
-        #print(line, file=out)
-        # print('\n', file=out)
-        # logging.debug(line)
 
     while True:
         ucicommand = ""
-
         time.sleep(0.001)
-        # logging.debug(f'testing for items in serial_in queue')
+
         if not serial_in.empty():
             try:
                 data = serial_in.get()
