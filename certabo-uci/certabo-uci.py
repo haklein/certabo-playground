@@ -349,7 +349,7 @@ def main():
                             if mystate == "user_shall_place_oppt_move":
                                 diffmap = codes.diff2squareset(s1, s2)
                                 logging.debug(f'Difference on Squares:\n{diffmap}')
-                                send_leds(codes.squareset2ledbytes(diffmap))
+                                send_leds(codes.squareset2ledbytes(diffmap,rotate180))
                                 logging.info("move for opponent")
                                 output(f'info string move for opponent')
                             elif mystate == "user_shall_place_his_move":
@@ -373,7 +373,7 @@ def main():
                                 except codes.InvalidMove:
                                     diffmap = codes.diff2squareset(s1, s2)
                                     logging.debug(f'Difference on Squares:\n{diffmap}')
-                                    send_leds(codes.squareset2ledbytes(diffmap))
+                                    send_leds(codes.squareset2ledbytes(diffmap,rotate180))
 
                                     if move_detect_tries > move_detect_max_tries:
                                         logging.info("Invalid move")
@@ -383,7 +383,7 @@ def main():
                             else:
                                 diffmap = codes.diff2squareset(s1, s2)
                                 logging.debug(f'Difference on Squares:\n{diffmap}')
-                                send_leds(codes.squareset2ledbytes(diffmap))
+                                send_leds(codes.squareset2ledbytes(diffmap,rotate180))
                                 output(f'info string place pieces on their places: {chessboard.fen()}')
                         else: # board is the same
                             if mystate == "user_shall_place_oppt_move":

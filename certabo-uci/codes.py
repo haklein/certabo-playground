@@ -397,8 +397,13 @@ def diff2squareset(s1, s2):
             diffmap.add(x)
     return diffmap
 
-def squareset2ledbytes(squareset):
+def squareset2ledbytes(squareset, rotate180=False):
     # we pack the uint64 squareset bitmask into a big endian bytearray
+    if (rotate180): # as squareset has only a mirror() method but no rotate, we're packing little endian and reverse bits of each byte
+        result = bytes()
+        for n in struct.pack('<Q',squareset):
+            result += int('{:08b}'.format(n)[::-1], 2).to_bytes(1,'little')
+        return result
     return struct.pack('>Q',squareset)
 
 def usb_data_to_FEN(usb_data, rotate180=False):
