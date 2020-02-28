@@ -22,7 +22,7 @@ Just add it as engine in pychess and select it as one of the opponents.
 ### lichess bot
 
 This has also been used successfully with the official lichess bot: https://github.com/careless25/lichess-bot
-Just specify the engine in the `config.yaml`. Then you can play on lichess with the CERTABO eboard (be aware that your account needs to be a bot account).
+Just specify the engine in the `config.yaml`. Then you can play on lichess with the CERTABO eboard (be aware that your account needs to be a bot account). If you want to play on lichess with a human account, you might be interested in https://github.com/haklein/certabo-playground/tree/master/certabo-lichess
 
 ### Arena 3.9 Beta (Linux)
 
