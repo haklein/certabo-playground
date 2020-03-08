@@ -1,0 +1,3 @@
+[submodule "certabo-lichess"]
+	path = certabo-lichess
+	url = https://github.com/haklein/certabo-lichess.git
